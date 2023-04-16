@@ -1,0 +1,245 @@
+(1) /* This code counts the distinct genres for movies  and stores it as a view*/
+create or replace view genre_count AS
+SELECT REPLACE(REPLACE(REPLACE(TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(genres, ',', n.n), ',', -1)), '[', ''), ']', ''), '''', '') as genre, COUNT(*) as count
+FROM titles
+CROSS JOIN (
+  SELECT 1 as n UNION ALL
+  SELECT 2 UNION ALL
+  SELECT 3 UNION ALL
+  SELECT 4 UNION ALL
+  SELECT 5 UNION ALL
+  SELECT 6 UNION ALL
+  SELECT 7 UNION ALL
+  SELECT 8 UNION ALL
+  SELECT 9 UNION ALL
+  SELECT 10
+) n
+WHERE n.n <= LENGTH(genres) - LENGTH(REPLACE(genres, ',', '')) + 1 
+and
+	type='MOVIE'
+GROUP BY genre
+ORDER BY count DESC;
+
+(2) /* This code counts the distinct genres for SHOWS */
+SELECT REPLACE(REPLACE(REPLACE(TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(genres, ',', n.n), ',', -1)), '[', ''), ']', ''), '''', '') as genre, COUNT(*) as count
+FROM titles
+CROSS JOIN (
+  SELECT 1 as n UNION ALL
+  SELECT 2 UNION ALL
+  SELECT 3 UNION ALL
+  SELECT 4 UNION ALL
+  SELECT 5 UNION ALL
+  SELECT 6 UNION ALL
+  SELECT 7 UNION ALL
+  SELECT 8 UNION ALL
+  SELECT 9 UNION ALL
+  SELECT 10
+) n
+WHERE n.n <= LENGTH(genres) - LENGTH(REPLACE(genres, ',', '')) + 1 
+and
+	type='SHOW'
+GROUP BY genre
+ORDER BY count desc
+limit 10;
+ 
+
+(3) /* THIS QUERY RETURNS THE TOP 10 most popular movies and TV shows on Netflix based on IMDb scores*/
+(select 
+	title,
+	type,
+	imdb_score 
+from 
+	titles t
+where 
+	type='SHOW'
+and 
+	imdb_score is not null
+AND TRIM(imdb_score) != ''
+group by 
+	title, imdb_score 
+order by imdb_score desc
+limit 10)
+
+union 
+
+(select 
+	title,
+	type,
+	imdb_score 
+from 
+	titles t
+where 
+	type='MOVIE'
+AND 
+	imdb_score is not null 
+AND TRIM(imdb_score) != ''
+group by 
+	title, imdb_score 
+order by imdb_score desc
+limit 10)
+limit 10
+ ;
+(4) /* THIS QUERY RETURNS THE TOP 10 most popular movies and TV shows on Netflix based on TMDB scores*/
+(select 
+	title,
+	type,
+	tmdb_score  
+from 
+	titles t
+where 
+	type='SHOW'
+and 
+	tmdb_score  is not null
+AND TRIM(tmdb_score) != ''
+group by 
+	title, tmdb_score 
+order by tmdb_score  desc
+limit 10)
+
+union 
+
+(select 
+	title,
+	type,
+	tmdb_score  
+from 
+	titles t
+where 
+	type='MOVIE'
+AND 
+	tmdb_score  is not null 
+AND TRIM(tmdb_score) != ''
+group by 
+	title, tmdb_score 
+order by tmdb_score  desc
+limit 10)
+limit 10
+ ;
+
+(5) /* THIS QUERY RETURNS THE TOP 10 most popular movies and TV shows on Netflix based on IMDb and tmdb scores*/
+(SELECT 
+	type,
+	tmdb_score,
+	imdb_score 
+FROM 
+	titles t
+WHERE 
+	type='SHOW'
+	AND tmdb_score IS NOT NULL
+	AND imdb_score IS NOT NULL
+	AND TRIM(imdb_score) != ''
+	AND TRIM(tmdb_score) != ''
+GROUP BY 
+	title, tmdb_score, imdb_score
+ORDER BY 
+	tmdb_score DESC, imdb_score DESC
+LIMIT 10)
+UNION 
+(SELECT 
+	type,
+	tmdb_score,
+	imdb_score 
+FROM 
+	titles t
+WHERE 
+	type='MOVIE'
+	AND tmdb_score IS NOT NULL
+	AND imdb_score IS NOT NULL
+	AND TRIM(tmdb_score) != ''
+	AND TRIM(imdb_score) != ''
+GROUP BY 
+	title, tmdb_score, imdb_score
+ORDER BY 
+	tmdb_score DESC
+LIMIT 10)
+ORDER BY 
+	tmdb_score DESC, imdb_score DESC
+LIMIT 10;
+
+
+
+(6) /* This query shows actors/actresses that have appeared in the most movies and TV shows on Netflix*/
+SELECT 
+  c.name AS actor, 
+  SUM(COUNT(*)) OVER(PARTITION BY c.name) AS number_of_movies_and_shows
+FROM 
+  credits c 
+JOIN 
+  titles t 
+  ON c.id = t.id
+WHERE 
+  t.type IN ('MOVIE', 'SHOW')
+GROUP BY 
+  actor
+ORDER BY 
+  number_of_movies_and_shows DESC 
+LIMIT 10
+
+(7) /* average length of movies and TV shows on Netflix*/
+SELECT CONCAT(ROUND(AVG(runtime) / 60, 0), 'hrs') AS avg_run_time
+FROM titles
+WHERE type IN ('MOVIE', 'SHOW');
+(II) /* average length of movies and TV shows on Netflix BY YEAR */
+SELECT 
+	REPLACE(release_year,',','') as year,
+	ROUND(AVG(runtime) / 60, 0) AS avg_run_time
+FROM titles
+WHERE type IN ('MOVIE', 'SHOW')
+group by 
+	year
+order by 
+	year desc 
+limit 10;
+
+
+(8) /* the distribution of movies and TV shows on Netflix by age certification */
+select 
+	age_certification,
+	type,
+	COUNT(distinct title ) as num_of_titles
+from titles t 
+where 
+	type in ('MOVIE', 'SHOW')
+and 
+	TRIM(age_certification) !=''
+group by 
+	age_certification, type 
+order by 
+	age_certification ;
+
+(9) /*the trend in the number of movies and TV shows released on Netflix over time*/
+SELECT 
+	type ,
+	REPLACE(release_year, ',', '') as year,
+	COUNT(distinct title) as num_of_titles
+FROM 
+	titles t2 
+GROUP BY 
+	type, year
+ORDER BY 
+	year desc, type;
+
+
+(10)  /* top 10 production countries for movies and TV shows on Netflix */
+SELECT 
+	type,
+	REPLACE(REPLACE(REPLACE(TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(production_countries , ',', n.n), ',', -1)), '[', ''), ']', ''), '''', '') AS production_country,
+	COUNT(*) AS count
+FROM titles t 
+CROSS JOIN (
+	SELECT a.N + b.N * 10 + 1 n
+	FROM 
+		(SELECT 0 AS N UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) a,
+		(SELECT 0 AS N UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) b
+	ORDER BY n
+) n
+WHERE 
+	type IN ('MOVIE','SHOW')
+GROUP BY 
+	type, production_country
+ORDER BY 
+	production_country DESC, type DESC 
+LIMIT 10;
+
+
+
